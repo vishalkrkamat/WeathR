@@ -10,6 +10,7 @@ struct OpenCageResponse {
 
 #[derive(Deserialize, Debug)]
 struct Resultg {
+    confidence: u8,
     geometry: Geometry,
 }
 
@@ -60,6 +61,7 @@ struct WeatherDetails {
 #[tokio::main]
 
 async fn main() -> Result<(), Error> {
+    //   geol().await;
     match tes().await {
         Ok((lat, long)) => {
             println!("long {lat} and long {long}");
@@ -91,7 +93,7 @@ fn input() -> String {
 
         let city = input.trim();
 
-        if !city.is_empty() {
+        if !city.is_empty() && city.chars().all(|c| c.is_alphabetic() || c.is_whitespace()) {
             return city.to_string(); // Return a valid string
         } else {
             println!("Invalid input. Please enter a non-empty string.");
@@ -103,22 +105,47 @@ async fn tes() -> Result<(f64, f64), reqwest::Error> {
     let mut lat: f64 = 0.0;
     let mut long: f64 = 0.0;
     let api_key = "4bb89ad47e0b42bda10743925cf19e74";
-    let query = input();
-    let url = format!(
-        "https://api.opencagedata.com/geocode/v1/json?q={}&key={}&no_annotations=1&limit=1",
-        query, api_key
-    );
-    println!("{}", url);
-    let resp = reqwest::get(url).await?;
-    let data: OpenCageResponse = resp.json().await?;
-    if data.results.is_empty() {
-        println!("its empty ");
-    } else {
-        println!("NOT emtpy");
-    }
-    for la in data.results.iter() {
-        lat = la.geometry.lat;
-        long = la.geometry.lng;
+    loop {
+        let query = input();
+        let url = format!(
+            "https://api.opencagedata.com/geocode/v1/json?q={}&key={}&no_annotations=1&limit=1",
+            query, api_key
+        );
+        println!("{}", url);
+        let resp = reqwest::get(url).await?;
+        let data: OpenCageResponse = resp.json().await?;
+        // Direct access using indexing
+
+        if data.results.is_empty() {
+            println!("its empty/not accurate");
+            continue;
+        } else {
+            let confidence = data.results[0].confidence;
+            println!("confi {}", confidence);
+            if confidence > 8 {
+                for la in data.results.iter() {
+                    lat = la.geometry.lat;
+                    long = la.geometry.lng;
+                }
+                break;
+            }
+            continue;
+        }
     }
     return Ok((lat, long));
+}
+
+async fn geol() {
+    let oc = Opencage::new("4bb89ad47e0b42bda10743925cf19e74".to_string());
+    let address = input();
+
+    let res: Vec<Point<f64>> = oc.forward(&address).unwrap();
+    let first_result = &res[0];
+
+    println!(
+        " thsi is from geol {longitude}, {latitude}",
+        longitude = first_result.x(),
+        latitude = first_result.y()
+    );
+    // 11.5761796, 48.1599218
 }
