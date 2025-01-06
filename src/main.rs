@@ -46,10 +46,6 @@ struct WeatherData {
     uv: u32,
     vis: u32,
     weather: WeatherDetails, // Nested object
-    wind_cdir: String,
-    wind_cdir_full: String,
-    wind_dir: u32,
-    wind_spd: f32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -72,16 +68,21 @@ async fn main() -> Result<(), Error> {
             println!("the url from weatherbit api:{}", url);
             let response = reqwest::get(url).await?;
             let weather: ApiResponse = response.json().await?;
-            for weat in &weather.data {
-                println!("{:?}", weat.weather.description);
-            }
-            println!("{:#?}", weather);
+            output(weather);
         }
         Err(e) => {
             println!("teh error{}", e);
         }
     };
     Ok(())
+}
+fn output(data: ApiResponse) {
+    for t in &data.data {
+        println!("{:?}", t.weather.description);
+        println!("Air quality: {}", t.aqi);
+        println!("Temperate: {} celcius", t.temp);
+        println!("UV: {} celcius", t.uv);
+    }
 }
 fn input() -> String {
     loop {
@@ -122,7 +123,7 @@ async fn tes() -> Result<(f64, f64), reqwest::Error> {
         } else {
             let confidence = data.results[0].confidence;
             println!("confi {}", confidence);
-            if confidence > 8 {
+            if confidence > 1 {
                 for la in data.results.iter() {
                     lat = la.geometry.lat;
                     long = la.geometry.lng;
